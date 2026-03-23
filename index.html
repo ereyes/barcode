@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Barcode Scanner Prototype</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --border: #d9e1ec;
+      --text: #1b2533;
+      --muted: #5c6b7d;
+      --accent: #2363eb;
+      --accent-soft: #eef4ff;
+      --success: #157347;
+      --success-soft: #e9f7ef;
+      --error: #b42318;
+      --error-soft: #fef3f2;
+      --warn: #946200;
+      --warn-soft: #fff8db;
+      --shadow: 0 10px 28px rgba(19, 34, 55, 0.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #eef3ff 0%, var(--bg) 210px);
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 32px 18px 56px;
+    }
+
+    .hero {
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid #d9e7ff;
+      padding: 8px 12px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.02rem;
+      max-width: 760px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: 1.15fr 0.85fr;
+      align-items: start;
+      margin-top: 22px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+    }
+
+    .panel p,
+    .panel li {
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .panel-header p {
+      margin: 0;
+      font-size: 0.95rem;
+      max-width: 430px;
+    }
+
+    .tip {
+      border-radius: 14px;
+      border: 1px solid #f1dd9a;
+      background: var(--warn-soft);
+      padding: 14px 15px;
+      font-size: 0.95rem;
+      color: #624700;
+    }
+
+    .status-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .status-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge.idle {
+      background: #edf2f8;
+      color: #314155;
+      border-color: #d9e1ec;
+    }
+
+    .badge.loading {
+      background: var(--warn-soft);
+      color: var(--warn);
+      border-color: #f0d985;
+    }
+
+    .badge.success {
+      background: var(--success-soft);
+      color: var(--success);
+      border-color: #cdebd8;
+    }
+
+    .badge.error {
+      background: var(--error-soft);
+      color: var(--error);
+      border-color: #f5c8c5;
+    }
+
+    #status-text {
+      margin: 0;
+      min-height: 48px;
+    }
+
+    form.manual {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    input[type="text"] {
+      flex: 1 1 250px;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 13px 14px;
+      font: inherit;
+      color: var(--text);
+      background: #fff;
+    }
+
+    input[type="text"]:focus {
+      outline: 3px solid rgba(35, 99, 235, 0.14);
+      border-color: var(--accent);
+    }
+
+    button,
+    a.button-link {
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 16px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, opacity 0.2s ease;
+    }
+
+    button:hover,
+    a.button-link:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 10px 18px rgba(35, 99, 235, 0.22);
+    }
+
+    a.button-link[aria-disabled="true"] {
+      pointer-events: none;
+      opacity: 0.55;
+      box-shadow: none;
+    }
+
+    .secondary {
+      background: #eef2f8;
+      color: #334155;
+    }
+
+    .result-empty {
+      display: grid;
+      place-items: center;
+      min-height: 420px;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      background: linear-gradient(180deg, #fbfcff 0%, #f6f9ff 100%);
+    }
+
+    .result-empty h3 {
+      margin: 12px 0 8px;
+      font-size: 1.15rem;
+    }
+
+    .result-empty p {
+      margin: 0;
+      max-width: 360px;
+    }
+
+    .result-card.hidden,
+    .result-empty.hidden {
+      display: none;
+    }
+
+    .result-card {
+      display: grid;
+      gap: 18px;
+    }
+
+    .result-main {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .cover-frame {
+      position: relative;
+      width: 170px;
+      aspect-ratio: 2 / 3;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, #f4f7fb 0%, #edf2f8 100%);
+      display: grid;
+      place-items: center;
+    }
+
+    .cover-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .cover-placeholder {
+      color: #667589;
+      font-weight: 700;
+      text-align: center;
+      padding: 16px;
+      line-height: 1.4;
+    }
+
+    .result-title {
+      margin: 0;
+      font-size: 1.6rem;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      font-size: 1rem;
+      color: var(--muted);
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .meta-item {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 13px;
+      background: #fcfdff;
+    }
+
+    .meta-item dt {
+      margin: 0 0 6px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: #607186;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .meta-item dd {
+      margin: 0;
+      color: var(--text);
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .footer-note {
+      margin-top: 16px;
+      font-size: 0.92rem;
+      color: #667589;
+    }
+
+    .footer-note a {
+      color: var(--accent);
+    }
+
+    #reader {
+      width: 100%;
+      min-height: 320px;
+    }
+
+    /* Light touch adjustments for the injected scanner UI */
+    #reader__scan_region,
+    #reader__dashboard {
+      border-radius: 14px;
+    }
+
+    #reader video,
+    #reader img {
+      border-radius: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        padding-inline: 12px;
+      }
+
+      .panel {
+        padding: 16px;
+      }
+
+      .panel-header,
+      .status-top {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .result-main {
+        grid-template-columns: 1fr;
+      }
+
+      .cover-frame {
+        width: min(220px, 100%);
+      }
+
+      .meta {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="eyebrow">Prototype • camera scan + online lookup</div>
+      <h1>Book barcode scanner</h1>
+      <p>
+        Scan the retail barcode on the back of a book, or type an ISBN manually. The page will
+        look up the book and show the metadata directly inside this document.
+      </p>
+    </header>
+
+    <div class="grid">
+      <section class="stack">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Scanner</h2>
+              <p>
+                Use the built-in scanner controls below for camera scanning or image-file scanning.
+              </p>
+            </div>
+          </div>
+
+          <div class="tip">
+            Camera access usually works only when this page is served from <strong>localhost</strong> or
+            <strong>HTTPS</strong>. If camera access is blocked, use the file-scan option in the widget or the
+            manual ISBN field below.
+          </div>
+
+          <div id="reader" aria-label="Barcode scanner"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Manual ISBN lookup</h2>
+          <p>Paste or type an ISBN-10 or ISBN-13 value here.</p>
+          <form id="manual-form" class="manual">
+            <input
+              id="manual-isbn"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              placeholder="Example: 9780140328721 or 0140328726"
+              aria-label="Manual ISBN input"
+            />
+            <button type="submit" class="primary">Lookup</button>
+            <button type="button" id="clear-button" class="secondary">Clear</button>
+          </form>
+        </section>
+
+        <section class="panel status-wrap">
+          <div class="status-top">
+            <h2>Status</h2>
+            <span id="status-badge" class="badge idle">Ready</span>
+          </div>
+          <p id="status-text">Waiting for a barcode scan or manual ISBN lookup.</p>
+        </section>
+      </section>
+
+      <section class="panel">
+        <h2>Book details</h2>
+
+        <div id="result-empty" class="result-empty">
+          <div>
+            <div style="font-size: 2.2rem;">📚</div>
+            <h3>No book loaded yet</h3>
+            <p>
+              After a successful scan or lookup, the title, authors, publisher, publication date,
+              page count, cover image, and identifier values will appear here.
+            </p>
+          </div>
+        </div>
+
+        <article id="result-card" class="result-card hidden" aria-live="polite">
+          <div class="result-main">
+            <div class="cover-frame">
+              <img id="book-cover" alt="Book cover" hidden />
+              <div id="cover-placeholder" class="cover-placeholder">No cover available</div>
+            </div>
+
+            <div>
+              <h3 id="book-title" class="result-title">—</h3>
+              <p id="book-subtitle" class="subtitle" hidden></p>
+
+              <dl class="meta">
+                <div class="meta-item">
+                  <dt>Authors</dt>
+                  <dd id="book-authors">—</dd>
+                </div>
+                <div class="meta-item">
+                  <dt>Publisher</dt>
+                  <dd id="book-publishers">—</dd>
+                </div>
+                <div class="meta-item">
+                  <dt>Publish date</dt>
+                  <dd id="book-publish-date">—</dd>
+                </div>
+                <div class="meta-item">
+                  <dt>Pages</dt>
+                  <dd id="book-pages">—</dd>
+                </div>
+                <div class="meta-item">
+                  <dt>ISBN-13</dt>
+                  <dd id="book-isbn13">—</dd>
+                </div>
+                <div class="meta-item">
+                  <dt>ISBN-10</dt>
+                  <dd id="book-isbn10">—</dd>
+                </div>
+                <div class="meta-item">
+                  <dt>Scanned code</dt>
+                  <dd id="book-raw-code">—</dd>
+                </div>
+                <div class="meta-item">
+                  <dt>Open Library URL</dt>
+                  <dd id="book-url-text">—</dd>
+                </div>
+              </dl>
+
+              <div class="actions">
+                <a id="open-library-link" class="button-link primary" href="#" target="_blank" rel="noopener noreferrer">
+                  Open in Open Library
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <p class="footer-note">
+            Data source: Open Library. This prototype uses a browser-friendly JSONP lookup so it can
+            stay as a single standalone HTML file.
+          </p>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      const state = {
+        scanner: null,
+        lastLookupKey: "",
+        lastLookupAt: 0,
+        activeLookupToken: 0,
+      };
+
+      const dom = {
+        statusBadge: document.getElementById("status-badge"),
+        statusText: document.getElementById("status-text"),
+        manualForm: document.getElementById("manual-form"),
+        manualInput: document.getElementById("manual-isbn"),
+        clearButton: document.getElementById("clear-button"),
+        resultEmpty: document.getElementById("result-empty"),
+        resultCard: document.getElementById("result-card"),
+        title: document.getElementById("book-title"),
+        subtitle: document.getElementById("book-subtitle"),
+        authors: document.getElementById("book-authors"),
+        publishers: document.getElementById("book-publishers"),
+        publishDate: document.getElementById("book-publish-date"),
+        pages: document.getElementById("book-pages"),
+        isbn13: document.getElementById("book-isbn13"),
+        isbn10: document.getElementById("book-isbn10"),
+        rawCode: document.getElementById("book-raw-code"),
+        urlText: document.getElementById("book-url-text"),
+        openLink: document.getElementById("open-library-link"),
+        cover: document.getElementById("book-cover"),
+        coverPlaceholder: document.getElementById("cover-placeholder"),
+      };
+
+      function setStatus(kind, message) {
+        const normalizedKind = ["idle", "loading", "success", "error"].includes(kind) ? kind : "idle";
+        const labelMap = {
+          idle: "Ready",
+          loading: "Looking up",
+          success: "Loaded",
+          error: "Problem",
+        };
+
+        dom.statusBadge.className = "badge " + normalizedKind;
+        dom.statusBadge.textContent = labelMap[normalizedKind];
+        dom.statusText.textContent = message;
+      }
+
+      function clearResult() {
+        dom.resultCard.classList.add("hidden");
+        dom.resultEmpty.classList.remove("hidden");
+        dom.title.textContent = "—";
+        dom.subtitle.textContent = "";
+        dom.subtitle.hidden = true;
+        dom.authors.textContent = "—";
+        dom.publishers.textContent = "—";
+        dom.publishDate.textContent = "—";
+        dom.pages.textContent = "—";
+        dom.isbn13.textContent = "—";
+        dom.isbn10.textContent = "—";
+        dom.rawCode.textContent = "—";
+        dom.urlText.textContent = "—";
+        dom.openLink.href = "#";
+        dom.openLink.setAttribute("aria-disabled", "true");
+        dom.cover.hidden = true;
+        dom.cover.removeAttribute("src");
+        dom.coverPlaceholder.hidden = false;
+      }
+
+      function showResult() {
+        dom.resultEmpty.classList.add("hidden");
+        dom.resultCard.classList.remove("hidden");
+      }
+
+      function joinNamedList(values, fallback) {
+        if (!Array.isArray(values) || values.length === 0) return fallback;
+        const names = values
+          .map(function (item) {
+            if (typeof item === "string") return item;
+            if (item && typeof item.name === "string") return item.name;
+            return null;
+          })
+          .filter(Boolean);
+        return names.length ? names.join(", ") : fallback;
+      }
+
+      function isbn10IsValid(isbn10) {
+        if (!/^\d{9}[\dX]$/.test(isbn10)) return false;
+        let total = 0;
+        for (let i = 0; i < 10; i += 1) {
+          const ch = isbn10[i];
+          const value = ch === "X" ? 10 : Number(ch);
+          total += value * (10 - i);
+        }
+        return total % 11 === 0;
+      }
+
+      function isbn13IsValid(isbn13) {
+        if (!/^\d{13}$/.test(isbn13)) return false;
+        let total = 0;
+        for (let i = 0; i < 12; i += 1) {
+          total += Number(isbn13[i]) * (i % 2 === 0 ? 1 : 3);
+        }
+        const checkDigit = (10 - (total % 10)) % 10;
+        return checkDigit === Number(isbn13[12]);
+      }
+
+      function normalizeBookCode(rawValue) {
+        if (!rawValue || typeof rawValue !== "string") return null;
+        const cleaned = rawValue.replace(/[^0-9Xx]/g, "").toUpperCase();
+
+        const isbn13Candidates = cleaned.match(/97[89]\d{10}/g) || [];
+        for (const candidate of isbn13Candidates) {
+          if (isbn13IsValid(candidate)) {
+            return { isbn: candidate, type: "ISBN-13" };
+          }
+        }
+
+        if (isbn13Candidates.length > 0) {
+          return null;
+        }
+
+        if (/^\d{9}[\dX]$/.test(cleaned) && isbn10IsValid(cleaned)) {
+          return { isbn: cleaned, type: "ISBN-10" };
+        }
+
+        return null;
+      }
+
+      function loadJsonp(url, timeoutMs) {
+        const timeout = typeof timeoutMs === "number" ? timeoutMs : 10000;
+        return new Promise(function (resolve, reject) {
+          const callbackName = "openLibraryJsonp_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+          const script = document.createElement("script");
+          let settled = false;
+
+          function cleanup() {
+            delete window[callbackName];
+            script.remove();
+          }
+
+          const timer = window.setTimeout(function () {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(new Error("Lookup timed out."));
+          }, timeout);
+
+          window[callbackName] = function (data) {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timer);
+            cleanup();
+            resolve(data);
+          };
+
+          script.onerror = function () {
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timer);
+            cleanup();
+            reject(new Error("Lookup failed."));
+          };
+
+          script.src = url + (url.includes("?") ? "&" : "?") + "callback=" + encodeURIComponent(callbackName);
+          document.body.appendChild(script);
+        });
+      }
+
+      async function lookupByIsbn(rawInput, sourceLabel) {
+        const normalized = normalizeBookCode(rawInput);
+
+        if (!normalized) {
+          clearResult();
+          setStatus("error", "That value does not look like a valid ISBN-10 or ISBN-13 book code.");
+          return;
+        }
+
+        const lookupKey = normalized.isbn;
+        const now = Date.now();
+        if (state.lastLookupKey === lookupKey && now - state.lastLookupAt < 3500) {
+          return;
+        }
+        state.lastLookupKey = lookupKey;
+        state.lastLookupAt = now;
+
+        const token = ++state.activeLookupToken;
+        clearResult();
+        setStatus("loading", "Looking up " + normalized.type + " " + normalized.isbn + "…");
+
+        try {
+          // Prototype note: Open Library marks /api/books as legacy, but it supports JSONP cleanly for a single-file browser demo.
+          const apiUrl = "https://openlibrary.org/api/books?bibkeys=" + encodeURIComponent("ISBN:" + normalized.isbn) + "&jscmd=data";
+          const payload = await loadJsonp(apiUrl, 10000);
+
+          if (token !== state.activeLookupToken) return;
+
+          const key = Object.keys(payload || {})[0];
+          const book = key ? payload[key] : null;
+
+          if (!book) {
+            clearResult();
+            setStatus("error", "No book record was returned for that code.");
+            return;
+          }
+
+          renderBook(book, rawInput, sourceLabel || "scan");
+          setStatus("success", "Loaded “" + (book.title || normalized.isbn) + "”.");
+        } catch (error) {
+          if (token !== state.activeLookupToken) return;
+          clearResult();
+          setStatus("error", "The lookup failed. Check your connection and try again.");
+          console.error(error);
+        }
+      }
+
+      function renderBook(book, rawInput, sourceLabel) {
+        showResult();
+
+        dom.title.textContent = book.title || "Untitled book";
+
+        if (book.subtitle) {
+          dom.subtitle.textContent = book.subtitle;
+          dom.subtitle.hidden = false;
+        } else {
+          dom.subtitle.textContent = "";
+          dom.subtitle.hidden = true;
+        }
+
+        dom.authors.textContent = joinNamedList(book.authors, "Unknown");
+        dom.publishers.textContent = joinNamedList(book.publishers, "Unknown");
+        dom.publishDate.textContent = book.publish_date || "Unknown";
+        dom.pages.textContent = typeof book.number_of_pages === "number" ? String(book.number_of_pages) : "Unknown";
+        dom.isbn13.textContent = Array.isArray(book.identifiers && book.identifiers.isbn_13) && book.identifiers.isbn_13.length
+          ? book.identifiers.isbn_13.join(", ")
+          : "—";
+        dom.isbn10.textContent = Array.isArray(book.identifiers && book.identifiers.isbn_10) && book.identifiers.isbn_10.length
+          ? book.identifiers.isbn_10.join(", ")
+          : "—";
+        dom.rawCode.textContent = String(rawInput).trim() + " (from " + sourceLabel + ")";
+        dom.urlText.textContent = book.url || "—";
+
+        if (book.url) {
+          dom.openLink.href = book.url;
+          dom.openLink.removeAttribute("aria-disabled");
+        } else {
+          dom.openLink.href = "#";
+          dom.openLink.setAttribute("aria-disabled", "true");
+        }
+
+        const coverUrl = book.cover && (book.cover.large || book.cover.medium || book.cover.small);
+        if (coverUrl) {
+          dom.cover.onload = function () {
+            dom.cover.hidden = false;
+            dom.coverPlaceholder.hidden = true;
+          };
+          dom.cover.onerror = function () {
+            dom.cover.hidden = true;
+            dom.coverPlaceholder.hidden = false;
+          };
+          dom.cover.src = coverUrl;
+        } else {
+          dom.cover.hidden = true;
+          dom.cover.removeAttribute("src");
+          dom.coverPlaceholder.hidden = false;
+        }
+      }
+
+      function initManualLookup() {
+        dom.manualForm.addEventListener("submit", function (event) {
+          event.preventDefault();
+          const value = dom.manualInput.value.trim();
+          if (!value) {
+            setStatus("error", "Enter an ISBN before running a manual lookup.");
+            return;
+          }
+          lookupByIsbn(value, "manual entry");
+        });
+
+        dom.clearButton.addEventListener("click", function () {
+          dom.manualInput.value = "";
+          state.lastLookupKey = "";
+          clearResult();
+          setStatus("idle", "Waiting for a barcode scan or manual ISBN lookup.");
+        });
+      }
+
+      function initScanner() {
+        if (!window.Html5QrcodeScanner || !window.Html5QrcodeSupportedFormats || !window.Html5QrcodeScanType) {
+          setStatus("error", "The barcode scanner library did not load.");
+          return;
+        }
+
+        const config = {
+          fps: 10,
+          qrbox: { width: 280, height: 140 },
+          rememberLastUsedCamera: true,
+          showTorchButtonIfSupported: true,
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION,
+          ],
+          supportedScanTypes: [
+            Html5QrcodeScanType.SCAN_TYPE_CAMERA,
+            Html5QrcodeScanType.SCAN_TYPE_FILE,
+          ],
+        };
+
+        state.scanner = new Html5QrcodeScanner("reader", config, false);
+        state.scanner.render(
+          function onScanSuccess(decodedText) {
+            lookupByIsbn(decodedText, "scanner");
+          },
+          function onScanFailure() {
+            // Intentionally ignored. The scanner invokes this very frequently while searching.
+          }
+        );
+      }
+
+      clearResult();
+      initManualLookup();
+      initScanner();
+    })();
+  </script>
+</body>
+</html>
