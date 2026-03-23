@@ -1,3 +1,3 @@
 # barcode
 
-![QR app](qr.png){width=200}
+![QR app](qr.png)
