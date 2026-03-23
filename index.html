@@ -188,8 +188,10 @@
       margin-top: 12px;
     }
 
-    input[type="text"] {
-      flex: 1 1 250px;
+    input[type="text"],
+    select,
+    textarea {
+      width: 100%;
       min-width: 0;
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -199,7 +201,30 @@
       background: #fff;
     }
 
-    input[type="text"]:focus {
+    input[type="text"] {
+      flex: 1 1 250px;
+    }
+
+    textarea {
+      min-height: 180px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 11px 12px;
+      font: inherit;
+      color: var(--muted);
+      background: #fff;
+    }
+
+    input[type="text"]:focus,
+    select:focus,
+    textarea:focus,
+    input[type="file"]:focus {
       outline: 3px solid rgba(35, 99, 235, 0.14);
       border-color: var(--accent);
     }
@@ -221,21 +246,66 @@
       transform: translateY(-1px);
     }
 
+    button:disabled,
+    a.button-link[aria-disabled="true"] {
+      pointer-events: none;
+      opacity: 0.55;
+      box-shadow: none;
+      transform: none;
+    }
+
     .primary {
       background: var(--accent);
       color: #fff;
       box-shadow: 0 10px 18px rgba(35, 99, 235, 0.22);
     }
 
-    a.button-link[aria-disabled="true"] {
-      pointer-events: none;
-      opacity: 0.55;
-      box-shadow: none;
-    }
-
     .secondary {
       background: #eef2f8;
       color: #334155;
+    }
+
+    .controls-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .field-grow {
+      flex: 1 1 280px;
+    }
+
+    .field label {
+      font-size: 0.86rem;
+      font-weight: 800;
+      color: #5b6b7e;
+    }
+
+    .camera-note {
+      margin: 0;
+      font-size: 0.92rem;
+      color: #667589;
+    }
+
+    .reader-shell {
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      background: linear-gradient(180deg, #fbfcff 0%, #f6f9ff 100%);
     }
 
     .result-empty {
@@ -353,6 +423,31 @@
       margin-top: 18px;
     }
 
+    .copy-block {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #fcfdff;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .copy-block h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .copy-block p {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    .copy-note {
+      align-self: center;
+      color: #667589;
+      font-size: 0.92rem;
+    }
+
     .footer-note {
       margin-top: 16px;
       font-size: 0.92rem;
@@ -366,16 +461,24 @@
     #reader {
       width: 100%;
       min-height: 320px;
+      position: relative;
     }
 
-    /* Light touch adjustments for the injected scanner UI */
-    #reader__scan_region,
-    #reader__dashboard {
-      border-radius: 14px;
+    #reader:empty::before {
+      content: "Camera preview or scanned image will appear here.";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 20px;
+      color: #667589;
+      line-height: 1.45;
     }
 
     #reader video,
-    #reader img {
+    #reader img,
+    #reader canvas {
       border-radius: 12px;
     }
 
@@ -411,6 +514,10 @@
       .meta {
         grid-template-columns: 1fr;
       }
+
+      .controls-row {
+        align-items: stretch;
+      }
     }
   </style>
 </head>
@@ -432,18 +539,49 @@
             <div>
               <h2>Scanner</h2>
               <p>
-                Use the built-in scanner controls below for camera scanning or image-file scanning.
+                Start the preferred rear camera, switch cameras if needed, or scan a barcode from a photo.
               </p>
             </div>
           </div>
 
           <div class="tip">
             Camera access usually works only when this page is served from <strong>localhost</strong> or
-            <strong>HTTPS</strong>. If camera access is blocked, use the file-scan option in the widget or the
-            manual ISBN field below.
+            <strong>HTTPS</strong>. If camera access is blocked, use the image-scan option below or the
+            manual ISBN field.
           </div>
 
-          <div id="reader" aria-label="Barcode scanner"></div>
+          <div class="controls-grid">
+            <div class="controls-row">
+              <button type="button" id="start-camera-button" class="primary">Start preferred camera</button>
+              <button type="button" id="use-camera-button" class="secondary" disabled>Start selected camera</button>
+              <button type="button" id="stop-camera-button" class="secondary" disabled>Stop camera</button>
+            </div>
+
+            <div class="controls-row">
+              <div class="field field-grow">
+                <label for="camera-select">Camera</label>
+                <select id="camera-select" disabled>
+                  <option value="">Camera list appears after permission is granted</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="controls-row">
+              <div class="field field-grow">
+                <label for="scan-file-input">Scan from photo</label>
+                <input id="scan-file-input" type="file" accept="image/*" capture="environment" />
+              </div>
+            </div>
+
+            <p class="camera-note">
+              When the browser exposes camera labels, this version gives extra priority to names like
+              <strong>Back Triple Camera</strong>, then falls back to other rear-camera options.
+            </p>
+          </div>
+
+          <div class="reader-shell">
+            <div id="reader" aria-label="Barcode scanner"></div>
+          </div>
         </section>
 
         <section class="panel">
@@ -468,7 +606,7 @@
             <h2>Status</h2>
             <span id="status-badge" class="badge idle">Ready</span>
           </div>
-          <p id="status-text">Waiting for a barcode scan or manual ISBN lookup.</p>
+          <p id="status-text">Waiting for a barcode scan, photo scan, or manual ISBN lookup.</p>
         </section>
       </section>
 
@@ -544,6 +682,18 @@
             Data source: Open Library. This prototype uses a browser-friendly JSONP lookup so it can
             stay as a single standalone HTML file.
           </p>
+
+          <section class="copy-block">
+            <div>
+              <h3>Copyable text</h3>
+              <p>Use this plain-text block to paste the scanned result into notes, forms, or other apps.</p>
+            </div>
+            <textarea id="copy-output" readonly placeholder="After a lookup, a plain-text summary will appear here."></textarea>
+            <div class="actions" style="margin-top: 0;">
+              <button type="button" id="copy-button" class="secondary" disabled>Copy text</button>
+              <span id="copy-note" class="copy-note">A plain-text version will appear here after a lookup.</span>
+            </div>
+          </section>
         </article>
       </section>
     </div>
@@ -552,7 +702,11 @@
   <script>
     (function () {
       const state = {
-        scanner: null,
+        html5QrCode: null,
+        cameras: [],
+        selectedCameraId: "",
+        isCameraRunning: false,
+        cameraBusy: false,
         lastLookupKey: "",
         lastLookupAt: 0,
         activeLookupToken: 0,
@@ -564,6 +718,11 @@
         manualForm: document.getElementById("manual-form"),
         manualInput: document.getElementById("manual-isbn"),
         clearButton: document.getElementById("clear-button"),
+        startCameraButton: document.getElementById("start-camera-button"),
+        useCameraButton: document.getElementById("use-camera-button"),
+        stopCameraButton: document.getElementById("stop-camera-button"),
+        cameraSelect: document.getElementById("camera-select"),
+        scanFileInput: document.getElementById("scan-file-input"),
         resultEmpty: document.getElementById("result-empty"),
         resultCard: document.getElementById("result-card"),
         title: document.getElementById("book-title"),
@@ -579,6 +738,9 @@
         openLink: document.getElementById("open-library-link"),
         cover: document.getElementById("book-cover"),
         coverPlaceholder: document.getElementById("cover-placeholder"),
+        copyOutput: document.getElementById("copy-output"),
+        copyButton: document.getElementById("copy-button"),
+        copyNote: document.getElementById("copy-note"),
       };
 
       function setStatus(kind, message) {
@@ -593,6 +755,21 @@
         dom.statusBadge.className = "badge " + normalizedKind;
         dom.statusBadge.textContent = labelMap[normalizedKind];
         dom.statusText.textContent = message;
+      }
+
+      function setCopyNote(message) {
+        dom.copyNote.textContent = message;
+      }
+
+      function setCopyableText(text) {
+        const normalized = typeof text === "string" ? text : "";
+        dom.copyOutput.value = normalized;
+        dom.copyButton.disabled = !normalized.trim();
+        setCopyNote(
+          normalized.trim()
+            ? "Ready to copy."
+            : "A plain-text version will appear here after a lookup."
+        );
       }
 
       function clearResult() {
@@ -614,6 +791,7 @@
         dom.cover.hidden = true;
         dom.cover.removeAttribute("src");
         dom.coverPlaceholder.hidden = false;
+        setCopyableText("");
       }
 
       function showResult() {
@@ -631,6 +809,10 @@
           })
           .filter(Boolean);
         return names.length ? names.join(", ") : fallback;
+      }
+
+      function joinIdentifierList(values) {
+        return Array.isArray(values) && values.length ? values.join(", ") : "—";
       }
 
       function isbn10IsValid(isbn10) {
@@ -738,7 +920,6 @@
         setStatus("loading", "Looking up " + normalized.type + " " + normalized.isbn + "…");
 
         try {
-          // Prototype note: Open Library marks /api/books as legacy, but it supports JSONP cleanly for a single-file browser demo.
           const apiUrl = "https://openlibrary.org/api/books?bibkeys=" + encodeURIComponent("ISBN:" + normalized.isbn) + "&jscmd=data";
           const payload = await loadJsonp(apiUrl, 10000);
 
@@ -763,6 +944,26 @@
         }
       }
 
+      function buildCopyText(book, rawInput, sourceLabel) {
+        const isbn13 = joinIdentifierList(book.identifiers && book.identifiers.isbn_13).replace(/^—$/, "Not available");
+        const isbn10 = joinIdentifierList(book.identifiers && book.identifiers.isbn_10).replace(/^—$/, "Not available");
+        const lines = [
+          "Title: " + (book.title || "Untitled book"),
+          book.subtitle ? "Subtitle: " + book.subtitle : null,
+          "Authors: " + joinNamedList(book.authors, "Unknown"),
+          "Publisher: " + joinNamedList(book.publishers, "Unknown"),
+          "Publish date: " + (book.publish_date || "Unknown"),
+          "Pages: " + (typeof book.number_of_pages === "number" ? String(book.number_of_pages) : "Unknown"),
+          "ISBN-13: " + isbn13,
+          "ISBN-10: " + isbn10,
+          "Scanned code: " + String(rawInput || "").trim(),
+          "Source: " + sourceLabel,
+          book.url ? "Open Library URL: " + book.url : null,
+        ];
+
+        return lines.filter(Boolean).join("\n");
+      }
+
       function renderBook(book, rawInput, sourceLabel) {
         showResult();
 
@@ -780,14 +981,11 @@
         dom.publishers.textContent = joinNamedList(book.publishers, "Unknown");
         dom.publishDate.textContent = book.publish_date || "Unknown";
         dom.pages.textContent = typeof book.number_of_pages === "number" ? String(book.number_of_pages) : "Unknown";
-        dom.isbn13.textContent = Array.isArray(book.identifiers && book.identifiers.isbn_13) && book.identifiers.isbn_13.length
-          ? book.identifiers.isbn_13.join(", ")
-          : "—";
-        dom.isbn10.textContent = Array.isArray(book.identifiers && book.identifiers.isbn_10) && book.identifiers.isbn_10.length
-          ? book.identifiers.isbn_10.join(", ")
-          : "—";
+        dom.isbn13.textContent = joinIdentifierList(book.identifiers && book.identifiers.isbn_13);
+        dom.isbn10.textContent = joinIdentifierList(book.identifiers && book.identifiers.isbn_10);
         dom.rawCode.textContent = String(rawInput).trim() + " (from " + sourceLabel + ")";
         dom.urlText.textContent = book.url || "—";
+        setCopyableText(buildCopyText(book, rawInput, sourceLabel));
 
         if (book.url) {
           dom.openLink.href = book.url;
@@ -815,6 +1013,357 @@
         }
       }
 
+      function normalizeCameraLabel(label) {
+        return String(label || "").trim().toLowerCase();
+      }
+
+      function formatCameraLabel(camera, index) {
+        const label = String(camera && camera.label ? camera.label : "").trim();
+        return label || "Camera " + (index + 1);
+      }
+
+      function getCameraLabelById(cameraId) {
+        if (!cameraId) return "";
+        const match = state.cameras.find(function (camera) {
+          return camera.id === cameraId;
+        });
+        return match ? formatCameraLabel(match) : "";
+      }
+
+      function scoreCamera(camera) {
+        const label = normalizeCameraLabel(camera && camera.label);
+        if (!label) return 0;
+
+        let score = 0;
+        if (/(front|user|selfie|facetime)/.test(label)) score -= 1600;
+        if (/(back\s*triple|rear\s*triple|triple\s*camera)/.test(label)) score += 2400;
+        if (/\btriple\b/.test(label)) score += 1500;
+        if (/(back|rear|environment|world)/.test(label)) score += 900;
+        if (/\bmain\b/.test(label)) score += 220;
+        if (/\bmacro\b/.test(label)) score += 120;
+        if (/\bwide\b/.test(label)) score += 80;
+        if (/ultra\s*wide/.test(label)) score -= 60;
+        if (/tele(photo)?/.test(label)) score -= 90;
+        return score;
+      }
+
+      function pickPreferredCameraId(cameras) {
+        if (!Array.isArray(cameras) || cameras.length === 0) return "";
+
+        const ranked = cameras
+          .map(function (camera, index) {
+            return { camera: camera, index: index, score: scoreCamera(camera) };
+          })
+          .sort(function (left, right) {
+            if (right.score !== left.score) return right.score - left.score;
+            return left.index - right.index;
+          });
+
+        return ranked[0] && ranked[0].score > 0 ? ranked[0].camera.id : "";
+      }
+
+      function populateCameraSelect(cameras) {
+        const currentValue = state.selectedCameraId || dom.cameraSelect.value;
+        dom.cameraSelect.innerHTML = "";
+
+        if (!Array.isArray(cameras) || cameras.length === 0) {
+          const option = document.createElement("option");
+          option.value = "";
+          option.textContent = "Camera list unavailable";
+          dom.cameraSelect.appendChild(option);
+          dom.cameraSelect.value = "";
+          refreshCameraControls();
+          return;
+        }
+
+        cameras.forEach(function (camera, index) {
+          const option = document.createElement("option");
+          option.value = camera.id;
+          option.textContent = formatCameraLabel(camera, index);
+          dom.cameraSelect.appendChild(option);
+        });
+
+        if (currentValue && cameras.some(function (camera) { return camera.id === currentValue; })) {
+          dom.cameraSelect.value = currentValue;
+        } else {
+          dom.cameraSelect.value = cameras[0].id;
+        }
+
+        refreshCameraControls();
+      }
+
+      function refreshCameraControls() {
+        const hasScanner = !!state.html5QrCode;
+        const hasCameras = state.cameras.length > 0;
+        const hasSelectedCamera = !!dom.cameraSelect.value;
+
+        dom.startCameraButton.disabled = !hasScanner || state.cameraBusy || state.isCameraRunning;
+        dom.stopCameraButton.disabled = !hasScanner || state.cameraBusy || !state.isCameraRunning;
+        dom.cameraSelect.disabled = !hasScanner || state.cameraBusy || !hasCameras;
+        dom.useCameraButton.disabled = !hasScanner || state.cameraBusy || !hasSelectedCamera;
+        dom.useCameraButton.textContent = state.isCameraRunning ? "Use selected camera" : "Start selected camera";
+        dom.scanFileInput.disabled = !hasScanner || state.cameraBusy;
+      }
+
+      function setCameraBusy(isBusy) {
+        state.cameraBusy = !!isBusy;
+        refreshCameraControls();
+      }
+
+      async function refreshCameraListSilently() {
+        if (!window.Html5Qrcode || !window.Html5Qrcode.getCameras) return;
+        try {
+          const cameras = await Html5Qrcode.getCameras();
+          state.cameras = Array.isArray(cameras) ? cameras : [];
+          populateCameraSelect(state.cameras);
+        } catch (error) {
+          console.warn("Could not refresh camera list.", error);
+        }
+      }
+
+      function clearScannerSurface() {
+        if (!state.html5QrCode) return;
+        try {
+          state.html5QrCode.clear();
+        } catch (error) {
+          // Safe to ignore: clear() throws when there is nothing active to clear.
+        }
+      }
+
+      function syncSelectedCameraFromRunningTrack() {
+        if (!state.html5QrCode) return;
+
+        try {
+          const settings = state.html5QrCode.getRunningTrackSettings();
+          if (settings && settings.deviceId) {
+            state.selectedCameraId = settings.deviceId;
+            if (state.cameras.some(function (camera) { return camera.id === settings.deviceId; })) {
+              dom.cameraSelect.value = settings.deviceId;
+            }
+            return;
+          }
+        } catch (error) {
+          // Ignore; this can fail on some browsers if the track details are not available.
+        }
+
+        if (dom.cameraSelect.value) {
+          state.selectedCameraId = dom.cameraSelect.value;
+        }
+      }
+
+      function getCameraScanConfig() {
+        return {
+          fps: 10,
+          qrbox: { width: 280, height: 140 },
+          aspectRatio: 1.7777778,
+        };
+      }
+
+      async function stopCameraInternal(updateStatusMessage) {
+        if (!state.html5QrCode || !state.isCameraRunning) {
+          if (updateStatusMessage) {
+            setStatus("idle", "Camera is not running. You can start it again or use a photo/manual ISBN.");
+          }
+          return;
+        }
+
+        await state.html5QrCode.stop();
+        state.isCameraRunning = false;
+        clearScannerSurface();
+        refreshCameraControls();
+
+        if (updateStatusMessage) {
+          setStatus("idle", "Camera stopped. You can start it again or use a photo/manual ISBN.");
+        }
+      }
+
+      async function startCameraTarget(cameraTarget) {
+        if (!state.html5QrCode) {
+          throw new Error("Scanner is not initialized.");
+        }
+
+        if (state.isCameraRunning) {
+          await stopCameraInternal(false);
+        } else {
+          clearScannerSurface();
+        }
+
+        await state.html5QrCode.start(
+          cameraTarget,
+          getCameraScanConfig(),
+          function onScanSuccess(decodedText) {
+            lookupByIsbn(decodedText, "scanner");
+          },
+          function onScanFailure() {
+            // Intentionally ignored. The scanner invokes this very frequently while searching.
+          }
+        );
+
+        state.isCameraRunning = true;
+        await refreshCameraListSilently();
+        syncSelectedCameraFromRunningTrack();
+        refreshCameraControls();
+
+        const cameraLabel = getCameraLabelById(state.selectedCameraId);
+        setStatus(
+          "idle",
+          cameraLabel
+            ? "Camera ready: " + cameraLabel + ". Point it at the book barcode."
+            : "Camera ready. Point it at the book barcode."
+        );
+      }
+
+      async function startPreferredCamera() {
+        if (!state.html5QrCode) return;
+
+        setCameraBusy(true);
+        setStatus("loading", "Opening the preferred rear camera…");
+
+        let cameras = state.cameras.slice();
+        if (window.Html5Qrcode && window.Html5Qrcode.getCameras) {
+          try {
+            cameras = await Html5Qrcode.getCameras();
+            state.cameras = Array.isArray(cameras) ? cameras : [];
+            populateCameraSelect(state.cameras);
+          } catch (error) {
+            state.cameras = [];
+            populateCameraSelect([]);
+            console.warn("Could not enumerate cameras before starting.", error);
+          }
+        }
+
+        const preferredCameraId = pickPreferredCameraId(cameras);
+        if (preferredCameraId) {
+          state.selectedCameraId = preferredCameraId;
+          dom.cameraSelect.value = preferredCameraId;
+        }
+
+        const targets = [];
+        if (preferredCameraId) targets.push(preferredCameraId);
+        targets.push({ facingMode: { exact: "environment" } });
+        targets.push({ facingMode: "environment" });
+        if (cameras[0] && cameras[0].id) targets.push(cameras[0].id);
+
+        const seenTargets = new Set();
+        let lastError = null;
+
+        try {
+          for (const target of targets) {
+            const key = typeof target === "string" ? "id:" + target : JSON.stringify(target);
+            if (seenTargets.has(key)) continue;
+            seenTargets.add(key);
+
+            try {
+              await startCameraTarget(target);
+              return;
+            } catch (error) {
+              lastError = error;
+            }
+          }
+
+          throw lastError || new Error("No camera could be started.");
+        } catch (error) {
+          setStatus("error", "Could not start the camera. Confirm camera permission and try again.");
+          console.error(error);
+        } finally {
+          setCameraBusy(false);
+        }
+      }
+
+      async function startSelectedCamera() {
+        if (!state.html5QrCode) return;
+        const cameraId = dom.cameraSelect.value;
+
+        if (!cameraId) {
+          setStatus("error", "Choose a camera first, then start it.");
+          return;
+        }
+
+        state.selectedCameraId = cameraId;
+        setCameraBusy(true);
+        setStatus("loading", state.isCameraRunning ? "Switching camera…" : "Starting selected camera…");
+
+        try {
+          await startCameraTarget(cameraId);
+        } catch (error) {
+          setStatus("error", "Could not switch to that camera. Try another one.");
+          console.error(error);
+        } finally {
+          setCameraBusy(false);
+        }
+      }
+
+      async function stopCamera() {
+        if (!state.html5QrCode) return;
+
+        setCameraBusy(true);
+        try {
+          await stopCameraInternal(true);
+        } catch (error) {
+          setStatus("error", "Could not stop the camera cleanly.");
+          console.error(error);
+        } finally {
+          setCameraBusy(false);
+        }
+      }
+
+      async function scanFromFile(event) {
+        if (!state.html5QrCode) return;
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+
+        setCameraBusy(true);
+        setStatus("loading", "Reading the selected image…");
+
+        try {
+          if (state.isCameraRunning) {
+            await stopCameraInternal(false);
+          } else {
+            clearScannerSurface();
+          }
+
+          const decodedText = await state.html5QrCode.scanFile(file, true);
+          await lookupByIsbn(decodedText, "image file");
+        } catch (error) {
+          setStatus("error", "No supported book barcode was found in that image.");
+          console.error(error);
+        } finally {
+          dom.scanFileInput.value = "";
+          setCameraBusy(false);
+        }
+      }
+
+      async function copyExportText() {
+        const text = dom.copyOutput.value.trim();
+        if (!text) {
+          setCopyNote("Nothing to copy yet.");
+          return;
+        }
+
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            dom.copyOutput.focus();
+            dom.copyOutput.select();
+            dom.copyOutput.setSelectionRange(0, dom.copyOutput.value.length);
+            const copied = document.execCommand("copy");
+            dom.copyOutput.blur();
+            if (!copied) {
+              throw new Error("execCommand copy failed.");
+            }
+          }
+
+          setCopyNote("Copied to clipboard.");
+        } catch (error) {
+          dom.copyOutput.focus();
+          dom.copyOutput.select();
+          dom.copyOutput.setSelectionRange(0, dom.copyOutput.value.length);
+          setCopyNote("Copy failed. Select the text and copy it manually.");
+          console.error(error);
+        }
+      }
+
       function initManualLookup() {
         dom.manualForm.addEventListener("submit", function (event) {
           event.preventDefault();
@@ -830,47 +1379,59 @@
           dom.manualInput.value = "";
           state.lastLookupKey = "";
           clearResult();
-          setStatus("idle", "Waiting for a barcode scan or manual ISBN lookup.");
+          setStatus("idle", "Waiting for a barcode scan, photo scan, or manual ISBN lookup.");
         });
       }
 
       function initScanner() {
-        if (!window.Html5QrcodeScanner || !window.Html5QrcodeSupportedFormats || !window.Html5QrcodeScanType) {
+        if (!window.Html5Qrcode || !window.Html5QrcodeSupportedFormats) {
+          refreshCameraControls();
           setStatus("error", "The barcode scanner library did not load.");
           return;
         }
 
-        const config = {
-          fps: 10,
-          qrbox: { width: 280, height: 140 },
-          rememberLastUsedCamera: true,
-          showTorchButtonIfSupported: true,
+        state.html5QrCode = new Html5Qrcode("reader", {
+          verbose: false,
           formatsToSupport: [
             Html5QrcodeSupportedFormats.EAN_13,
             Html5QrcodeSupportedFormats.UPC_A,
             Html5QrcodeSupportedFormats.UPC_E,
             Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION,
           ],
-          supportedScanTypes: [
-            Html5QrcodeScanType.SCAN_TYPE_CAMERA,
-            Html5QrcodeScanType.SCAN_TYPE_FILE,
-          ],
-        };
+        });
 
-        state.scanner = new Html5QrcodeScanner("reader", config, false);
-        state.scanner.render(
-          function onScanSuccess(decodedText) {
-            lookupByIsbn(decodedText, "scanner");
-          },
-          function onScanFailure() {
-            // Intentionally ignored. The scanner invokes this very frequently while searching.
-          }
-        );
+        dom.startCameraButton.addEventListener("click", function () {
+          startPreferredCamera();
+        });
+
+        dom.useCameraButton.addEventListener("click", function () {
+          startSelectedCamera();
+        });
+
+        dom.stopCameraButton.addEventListener("click", function () {
+          stopCamera();
+        });
+
+        dom.cameraSelect.addEventListener("change", function () {
+          state.selectedCameraId = dom.cameraSelect.value;
+          refreshCameraControls();
+        });
+
+        dom.scanFileInput.addEventListener("change", function (event) {
+          scanFromFile(event);
+        });
+
+        refreshCameraControls();
       }
+
+      dom.copyButton.addEventListener("click", function () {
+        copyExportText();
+      });
 
       clearResult();
       initManualLookup();
       initScanner();
+      setStatus("idle", "Waiting for a barcode scan, photo scan, or manual ISBN lookup.");
     })();
   </script>
 </body>
